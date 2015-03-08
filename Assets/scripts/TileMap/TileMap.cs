@@ -5,76 +5,86 @@ using System.Collections.Generic;
 
 [ExecuteInEditMode]
 public class TileMap : MonoBehaviour {
-
+	
 	[SerializeField] private float m_cellSize = 32.0f;
 	[SerializeField] bool m_showGrid = true;
-
+	
 	[SerializeField] TileSet m_tileSet;
-
+	
 	int m_gridWidth = 40;
 	int m_gridHeight = 20;
-
-	private List< List<Tile> > m_grid;
-
+	
+	[HideInInspector][SerializeField]
+	private List< RowWrapper > m_grid;
+	
 	private float m_xRange = 800.0f;
 	private float m_yRange = 800.0f;
-
+	
 	private float m_baseUnit = 100.0f;
 	
 	Transform m_currentTile;
-
+	
 	// Use this for initialization
 	void Start () {
 		//compute range of the grid ( in world units )
 		m_xRange = ( m_gridWidth * m_cellSize ) / m_baseUnit;
 		m_yRange = ( m_gridHeight * m_cellSize ) / m_baseUnit;
-
+		
 		//create the grid data structure
-		m_grid = new List<List<Tile>> (m_gridHeight);
-		for (int i=0; i < m_gridHeight; i++) {
-			m_grid.Add( new List<Tile>(m_gridWidth) );
-		}
+		InitGrid ();
+		SearchTilesInChildren ();
 
-		Debug.Log (m_xRange);
-		if (m_tileSet && m_tileSet.prefabs.Length > 0) {
-			m_currentTile = m_tileSet.prefabs [0];
+		//Select first tile
+		if (m_tileSet && m_tileSet.tilesPrefabs.Length > 0 && m_currentTile == null) {
+			m_currentTile = m_tileSet.tilesPrefabs [0];
 		}
 	}
 	
 	// Update is called once per frame
 	void Update () {
-	
+		
 	}
-
+	
 	public GameObject AddTile (float x, float y){
 		GameObject go = null;
-		if( m_currentTile != null ){
-
+		if( m_currentTile != null ){			
 			//Position in the grid
 			float i = Mathf.Floor(x * m_baseUnit / m_cellSize) + Mathf.Floor(m_gridWidth *0.5f);
 			float j = Mathf.Floor(y * m_baseUnit / m_cellSize) + Mathf.Floor(m_gridHeight *0.5f);
 
+			//outside of grid bounds
 			if( i < 0 || j < 0 || i >= m_gridWidth || j >= m_gridHeight)
 				return null;
 			
 			Undo.IncrementCurrentGroup();
+
 			//Instantiate tile prefab
 			go = (GameObject) PrefabUtility.InstantiatePrefab(m_currentTile.gameObject);
-
+			
+			//store the script in the grid
+			Tile tileScript = go.GetComponent<Tile>();
+			if(tileScript){
+				if( m_grid == null ){
+					InitGrid();
+				}
+				RowWrapper row = m_grid[(int)j];
+				row.Insert((int)i, tileScript);
+			}
+			StoreTileObject(tileScript.gameObject, (int) i, (int) j);
+			
 			float cellSize = m_cellSize / m_baseUnit;
 			//position in the world
 			float newX = - m_xRange * 0.5f + i * cellSize + cellSize * 0.5f ;
 			float newY = - m_yRange * 0.5f + j * cellSize + cellSize * 0.5f ;
-
+			
 			Vector3 aligned = new Vector3(newX  ,newY  ,0.0f);
 			go.transform.position = aligned;
-			go.transform.parent = this.transform;
 			
 			Undo.RegisterCreatedObjectUndo(go,"Create"+go.name);
 		}
 		return go;
 	}
-
+	
 	void OnDrawGizmos(){
 		if (m_showGrid) {
 			Vector3 pos = Camera.current.transform.position;
@@ -89,16 +99,89 @@ public class TileMap : MonoBehaviour {
 			}
 		}
 	}
+	
+	void StoreTileObject(GameObject _tile, int _i, int _j){
+		GameObject rowObject = null;
+		for (int i=0; i < transform.childCount; i++) {
+			if( transform.GetChild(i).gameObject.name == "Row"+_j){
+				rowObject = transform.GetChild(i).gameObject;
+				break;
+			}
+		}
+		if (rowObject == null) {
+			rowObject = new GameObject("Row"+_j);
+			rowObject.transform.parent = transform;
+		}
+		_tile.gameObject.name = "Tile" + _i + "_" + _j;
+		_tile.transform.parent = rowObject.transform;
+	}
+	
+	void SearchTilesInChildren(){
+		for (int c=0; c < transform.childCount; c ++) {
+			Transform child = transform.GetChild(c);
+			string name = child.gameObject.name;
+			name = name.Substring( 3 );
+			int row = int.Parse(name);
+			for(int t = 0; t < child.childCount; t++){
+				Transform tileT = child.GetChild(t);
+				name = tileT.gameObject.name;
+				name = name.Split('_')[0];
+				name = name.Substring( 4 );
+				int column = int.Parse(name);
+				//Store into grid
+				Tile tileScript = tileT.gameObject.GetComponent<Tile>();
+				m_grid[row].Insert(column, tileScript);
+			}
+		}
+		PrintGrid ();
+	}
 
+	void InitGrid(){
+		m_grid = new List<RowWrapper> ();
+		for (int j=0; j < m_gridHeight; j++) {
+			RowWrapper tmpList = new RowWrapper();
+			for(int i=0; i < m_gridWidth; i ++){
+				tmpList.Add(null);
+			}
+			m_grid.Add( tmpList );
+		}
+	}
+
+	/// <summary>
+	/// Gets the tile.
+	/// </summary>
+	/// <returns>The tile.</returns>
+	/// <param name="i">The index.</param>
+	/// <param name="j">J.</param>
+	public Tile GetTile(int i, int j){
+		RowWrapper row = null;
+		try{
+			row = m_grid [j];
+		}catch(System.Exception e){
+			Debug.LogError("No row "+j);
+			return null;
+		}
+
+		Tile tileScript;
+		try{
+			tileScript = row[i];
+		}catch(System.Exception e){
+			Debug.LogError("No Column "+i);
+			return null;
+		}
+
+		return tileScript;
+	}
+	
 	#region GETTERS
 	/**
 	 * GETTERS
 	 * */
-
+	
 	public void SetCurrentTile(Transform _tile){
 		m_currentTile = _tile;
 	}
-
+	
 	public void SetCurrentTileByName(string _tileName){
 		if (m_tileSet == null)
 			return;
@@ -106,18 +189,18 @@ public class TileMap : MonoBehaviour {
 		if( t != null )
 			m_currentTile = t;
 	}
-
+	
 	public Transform GetCurrentTile(){
 		return m_currentTile;
 	}
-
-
+	
+	
 	public float CellSize {
 		get {
 			return m_cellSize;
 		}
 	}
-
+	
 	public TileSet TileSet {
 		get {
 			return m_tileSet;
@@ -126,7 +209,7 @@ public class TileMap : MonoBehaviour {
 			m_tileSet = value;
 		}
 	}
-
+	
 	public int GridWidth {
 		get {
 			return m_gridWidth;
@@ -140,7 +223,7 @@ public class TileMap : MonoBehaviour {
 			m_xRange = ( m_gridWidth * m_cellSize ) / m_baseUnit;
 		}
 	}
-
+	
 	public int GridHeight {
 		get {
 			return m_gridHeight;
@@ -152,6 +235,23 @@ public class TileMap : MonoBehaviour {
 			m_gridHeight = value;
 			//compute range of the grid ( in world units )
 			m_yRange = ( m_gridHeight * m_cellSize ) / m_baseUnit;
+		}
+	}
+
+	public void PrintGrid(){
+		Tile tile;
+		for (int j=0; j < m_gridHeight; j ++) {
+			for(int i=0 ; i < m_gridWidth; i++){
+				try{
+					tile = m_grid [j][i];
+				}catch(System.Exception e){
+					continue;
+				}
+
+				if( tile ){
+					Debug.Log (tile.gameObject.name + " at ["+i+","+j+"]");
+				}
+			}
 		}
 	}
 	#endregion

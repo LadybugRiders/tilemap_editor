@@ -2,12 +2,12 @@
 using System.Collections;
 
 public class TileSet : ScriptableObject {
-	public Transform[] prefabs = new Transform[0];
+	public Transform[] tilesPrefabs = new Transform[0];
 
 	public Transform GetTileByName(string _name){
-		for (int i=0; i < prefabs.Length; i ++) {
-			if( prefabs[i].gameObject.name == _name )
-				return prefabs[i];
+		for (int i=0; i < tilesPrefabs.Length; i ++) {
+			if( tilesPrefabs[i].gameObject.name == _name )
+				return tilesPrefabs[i];
 		}
 		return null;
 	}

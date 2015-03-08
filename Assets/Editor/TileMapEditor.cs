@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using UnityEditor;
 using System.IO;
@@ -53,9 +53,9 @@ public class TileMapEditor : Editor {
 		}
 
 		//Create arrays for selecting a tile prefab
-		string[] names = new string[m_tileMap.TileSet.prefabs.Length];
+		string[] names = new string[m_tileMap.TileSet.tilesPrefabs.Length];
 		for (int i=0; i < names.Length; i ++) {
-			names[i] = m_tileMap.TileSet.prefabs[i].gameObject.name;
+			names[i] = m_tileMap.TileSet.tilesPrefabs[i].gameObject.name;
 		}
 		//check when the value of the dropdown is changed
 		EditorGUI.BeginChangeCheck ();
