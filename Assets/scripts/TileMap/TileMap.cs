@@ -6,11 +6,14 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 public class TileMap : MonoBehaviour {
 	
-	[SerializeField] private float m_cellSize = 32.0f;
+	[HideInInspector] [SerializeField] private float m_cellSize = 32.0f;
 	[SerializeField] bool m_showGrid = true;
 	
 	[SerializeField] TileSet m_tileSet;
+
 	
+	bool m_lockEditing = false;
+
 	int m_gridWidth = 40;
 	int m_gridHeight = 20;
 	
@@ -45,46 +48,6 @@ public class TileMap : MonoBehaviour {
 		
 	}
 	
-	public GameObject AddTile (float x, float y){
-		GameObject go = null;
-		if( m_currentTile != null ){			
-			//Position in the grid
-			float i = Mathf.Floor(x * m_baseUnit / m_cellSize) + Mathf.Floor(m_gridWidth *0.5f);
-			float j = Mathf.Floor(y * m_baseUnit / m_cellSize) + Mathf.Floor(m_gridHeight *0.5f);
-
-			//outside of grid bounds
-			if( i < 0 || j < 0 || i >= m_gridWidth || j >= m_gridHeight)
-				return null;
-			
-			Undo.IncrementCurrentGroup();
-
-			//Instantiate tile prefab
-			go = (GameObject) PrefabUtility.InstantiatePrefab(m_currentTile.gameObject);
-			
-			//store the script in the grid
-			Tile tileScript = go.GetComponent<Tile>();
-			if(tileScript){
-				if( m_grid == null ){
-					InitGrid();
-				}
-				RowWrapper row = m_grid[(int)j];
-				row.Insert((int)i, tileScript);
-			}
-			StoreTileObject(tileScript.gameObject, (int) i, (int) j);
-			
-			float cellSize = m_cellSize / m_baseUnit;
-			//position in the world
-			float newX = - m_xRange * 0.5f + i * cellSize + cellSize * 0.5f ;
-			float newY = - m_yRange * 0.5f + j * cellSize + cellSize * 0.5f ;
-			
-			Vector3 aligned = new Vector3(newX  ,newY  ,0.0f);
-			go.transform.position = aligned;
-			
-			Undo.RegisterCreatedObjectUndo(go,"Create"+go.name);
-		}
-		return go;
-	}
-	
 	void OnDrawGizmos(){
 		if (m_showGrid) {
 			Vector3 pos = Camera.current.transform.position;
@@ -98,6 +61,58 @@ public class TileMap : MonoBehaviour {
 				                 new Vector3 (x, m_yRange*0.5f, 0));
 			}
 		}
+	}
+	
+	public GameObject AddTile (float x, float y){
+		GameObject go = null;
+		if( m_currentTile != null ){			
+			//Position in the grid
+			float i = Mathf.Floor(x * m_baseUnit / m_cellSize) + Mathf.Floor(m_gridWidth *0.5f);
+			float j = Mathf.Floor(y * m_baseUnit / m_cellSize) + Mathf.Floor(m_gridHeight *0.5f);
+			
+			//outside of grid bounds
+			if( i < 0 || j < 0 || i >= m_gridWidth || j >= m_gridHeight)
+				return null;
+			
+			Undo.IncrementCurrentGroup();
+			
+			//Instantiate tile prefab
+			go = (GameObject) PrefabUtility.InstantiatePrefab(m_currentTile.gameObject);
+			
+			Tile formerTile = GetTile((int)i,(int)j);
+			if( formerTile ){
+				Debug.Log ("Delete " + i + " " + j);
+				Debug.Log(formerTile.Column + " " + formerTile.Row);
+				Object.DestroyImmediate(formerTile.gameObject);
+			}
+			
+			//store the script in the grid
+			Tile tileScript = go.GetComponent<Tile>();
+			if(tileScript){
+				if( m_grid == null ){
+					InitGrid();
+				}
+				RowWrapper row = m_grid[(int)j];
+				row.Insert((int)i, tileScript);
+				//set variables
+				tileScript.Row = (int) j;
+				tileScript.Column =(int) i;
+				//Resize
+				tileScript.Resize(m_cellSize);
+			}
+			StoreTileObject(tileScript.gameObject, (int) i, (int) j);
+			
+			float cellSize = m_cellSize / m_baseUnit;
+			//position in the world
+			float newX = - m_xRange * 0.5f + i * cellSize + cellSize * 0.5f ;
+			float newY = - m_yRange * 0.5f + j * cellSize + cellSize * 0.5f ;
+			
+			Vector3 newPos = new Vector3(newX  ,newY  ,0.0f);
+			go.transform.position = newPos;
+			
+			Undo.RegisterCreatedObjectUndo(go,"Create"+go.name);
+		}
+		return go;
 	}
 	
 	void StoreTileObject(GameObject _tile, int _i, int _j){
@@ -124,16 +139,11 @@ public class TileMap : MonoBehaviour {
 			int row = int.Parse(name);
 			for(int t = 0; t < child.childCount; t++){
 				Transform tileT = child.GetChild(t);
-				name = tileT.gameObject.name;
-				name = name.Split('_')[0];
-				name = name.Substring( 4 );
-				int column = int.Parse(name);
 				//Store into grid
 				Tile tileScript = tileT.gameObject.GetComponent<Tile>();
-				m_grid[row].Insert(column, tileScript);
+				m_grid[tileScript.Row][tileScript.Column] = tileScript;
 			}
 		}
-		PrintGrid ();
 	}
 
 	void InitGrid(){
@@ -158,7 +168,7 @@ public class TileMap : MonoBehaviour {
 		try{
 			row = m_grid [j];
 		}catch(System.Exception e){
-			Debug.LogError("No row "+j);
+			//Debug.LogError("No row "+j);
 			return null;
 		}
 
@@ -166,11 +176,35 @@ public class TileMap : MonoBehaviour {
 		try{
 			tileScript = row[i];
 		}catch(System.Exception e){
-			Debug.LogError("No Column "+i);
+			//Debug.LogError("No Column "+i);
 			return null;
 		}
 
 		return tileScript;
+	}
+
+	public void ResizeGridTiles(){
+		Tile tile;
+		for (int j=0; j < m_gridHeight; j ++) {
+			for(int i=0 ; i < m_gridWidth; i++){
+				try{
+					tile = m_grid [j][i];
+				}catch(System.Exception e){
+					continue;
+				}
+				
+				if( tile ){
+					tile.Resize(m_cellSize);
+					float cellSize = m_cellSize / m_baseUnit;
+					//position in the world
+					float newX = - m_xRange * 0.5f + i * cellSize + cellSize * 0.5f ;
+					float newY = - m_yRange * 0.5f + j * cellSize + cellSize * 0.5f ;
+					
+					Vector3 newPos = new Vector3(newX  ,newY  ,0.0f);
+					tile.transform.position = newPos;
+				}
+			}
+		}
 	}
 	
 	#region GETTERS
@@ -198,6 +232,12 @@ public class TileMap : MonoBehaviour {
 	public float CellSize {
 		get {
 			return m_cellSize;
+		}
+		set{
+			m_cellSize = value;
+			m_xRange = ( m_gridWidth * m_cellSize ) / m_baseUnit;
+			m_yRange = ( m_gridHeight * m_cellSize ) / m_baseUnit;
+			ResizeGridTiles();
 		}
 	}
 	
@@ -252,6 +292,15 @@ public class TileMap : MonoBehaviour {
 					Debug.Log (tile.gameObject.name + " at ["+i+","+j+"]");
 				}
 			}
+		}
+	}
+
+	public bool isLocked {
+		get {
+			return m_lockEditing;
+		}
+		set {
+			m_lockEditing = value;
 		}
 	}
 	#endregion

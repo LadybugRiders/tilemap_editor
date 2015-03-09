@@ -23,4 +23,14 @@ public class RowWrapper  {
 	public void Insert(int index,Tile t){
 		list.Insert (index,t);
 	}
+
+	public void Print(){
+		for(int i=0; i < list.Count; i++){
+			try{
+				Debug.Log (list[i].gameObject.name + "at column " + i);
+			}catch(System.Exception e){
+				Debug.Log( "null at column " + i);
+			}
+		}
+	}
 }

@@ -33,6 +33,14 @@ public class TileMapEditor : Editor {
 	}
 
 	public override void OnInspectorGUI(){
+		//Check cell size changes
+		EditorGUI.BeginChangeCheck ();
+		float newValueCellSize = m_tileMap.CellSize;
+		newValueCellSize =  EditorGUILayout.FloatField ("Cell Size", newValueCellSize);
+		if (EditorGUI.EndChangeCheck ()) {
+			m_tileMap.CellSize = newValueCellSize;
+		}
+
 		base.OnInspectorGUI ();
 
 		//Grid size manipulation
@@ -63,9 +71,16 @@ public class TileMapEditor : Editor {
 		if (EditorGUI.EndChangeCheck ()) {
 			m_tileMap.SetCurrentTileByName(names[m_selectedTileIndex]);
 		}
+
+		//Edition Lock
+		m_tileMap.isLocked = EditorGUILayout.Toggle ("Lock", m_tileMap.isLocked);
 	}
 
 	void OnSceneGUI(){
+
+		if (m_tileMap && m_tileMap.isLocked)
+			return;
+
 		int controlID = GUIUtility.GetControlID (FocusType.Passive);
 		Event e = Event.current;
 		Ray ray = Camera.current.ScreenPointToRay ( 
@@ -74,7 +89,7 @@ public class TileMapEditor : Editor {
 		                         );
 		Vector3 mousePos = ray.origin;
 
-		if (e.isMouse && e.type == EventType.MouseDown) {
+		if (e.isMouse && (e.type == EventType.MouseDown) ) {
 			GUIUtility.hotControl = controlID;
 			e.Use();
 
