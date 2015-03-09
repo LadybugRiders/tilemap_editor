@@ -11,4 +11,14 @@ public class TileSet : ScriptableObject {
 		}
 		return null;
 	}
+
+	public bool TileExists(Tile _tile){
+		for (int i=0; i < tilesPrefabs.Length; i++) {
+			Tile t = tilesPrefabs[i].gameObject.GetComponent<Tile>();
+			if( t.Compare(_tile) ){
+				return true;
+			}
+		}
+		return false;
+	}
 }

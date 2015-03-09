@@ -9,7 +9,7 @@ public class TileMap : MonoBehaviour {
 	[HideInInspector] [SerializeField] private float m_cellSize = 32.0f;
 	[SerializeField] bool m_showGrid = true;
 	
-	[SerializeField] TileSet m_tileSet;
+	[HideInInspector][SerializeField] TileSet m_tileSet;
 	
 	bool m_lockEditing = false;
 
@@ -42,11 +42,6 @@ public class TileMap : MonoBehaviour {
 		}
 	}
 	
-	// Update is called once per frame
-	void Update () {
-		
-	}
-	
 	void OnDrawGizmos(){
 		if (m_showGrid) {
 			Vector3 pos = Camera.current.transform.position;
@@ -63,6 +58,7 @@ public class TileMap : MonoBehaviour {
 	}
 	
 	public GameObject AddTile (float x, float y){
+		Debug.Log (m_currentTile);
 		GameObject go = null;
 		if( m_currentTile != null ){			
 			//Position in the grid
@@ -102,8 +98,10 @@ public class TileMap : MonoBehaviour {
 				tileScript.Column =(int) i;
 				//Resize
 				tileScript.Resize(m_cellSize);
+
+				StoreTileObject(tileScript.gameObject, (int) i, (int) j);
 			}
-			StoreTileObject(tileScript.gameObject, (int) i, (int) j);
+
 			
 			float cellSize = m_cellSize / m_baseUnit;
 			//position in the world
@@ -137,9 +135,6 @@ public class TileMap : MonoBehaviour {
 	void SearchTilesInChildren(){
 		for (int c=0; c < transform.childCount; c ++) {
 			Transform child = transform.GetChild(c);
-			string name = child.gameObject.name;
-			name = name.Substring( 3 );
-			int row = int.Parse(name);
 			for(int t = 0; t < child.childCount; t++){
 				Transform tileT = child.GetChild(t);
 				//Store into grid
@@ -209,6 +204,26 @@ public class TileMap : MonoBehaviour {
 			}
 		}
 	}
+
+	//compare Tiles with new tileset Tiles and remove the wrong ones
+	void CleanGrid(){
+
+		Tile tile;
+		for (int j=0; j < m_gridHeight; j ++) {
+			for(int i=0 ; i < m_gridWidth; i++){
+				try{
+					tile = m_grid [j][i];
+				}catch(System.Exception e){
+					continue;
+				}
+
+				if( tile != null && (  m_tileSet == null || ! m_tileSet.TileExists(tile) ) ){
+					m_grid[j][i] = null;
+					Object.DestroyImmediate(tile.gameObject);
+				}
+			}
+		}
+	}
 	
 	#region GETTERS
 	/**
@@ -250,6 +265,11 @@ public class TileMap : MonoBehaviour {
 		}
 		set{
 			m_tileSet = value;
+			//Select first tile
+			if (m_tileSet && m_tileSet.tilesPrefabs.Length > 0 ) {
+				m_currentTile = m_tileSet.tilesPrefabs [0];
+			}
+			CleanGrid();
 		}
 	}
 	
