@@ -16,7 +16,7 @@ public class TileMap : MonoBehaviour {
 	int m_gridWidth = 40;
 	int m_gridHeight = 20;
 	
-	/*[HideInInspector]*/[SerializeField]
+	[HideInInspector][SerializeField]
 	private List< RowWrapper > m_grid;
 	
 	private float m_xRange = 800.0f;
@@ -74,16 +74,20 @@ public class TileMap : MonoBehaviour {
 				return null;
 			
 			Undo.IncrementCurrentGroup();
-			
-			//Instantiate tile prefab
-			go = (GameObject) PrefabUtility.InstantiatePrefab(m_currentTile.gameObject);
-			
+
 			Tile formerTile = GetTile((int)i,(int)j);
 			if( formerTile ){
-				Debug.Log ("Delete " + i + " " + j);
-				Debug.Log(formerTile.Column + " " + formerTile.Row);
+				//if the tile we want to add is already in place
+				bool sameTile = formerTile.Compare(m_currentTile.GetComponent<Tile>()) ;
+				if(sameTile){
+					return null;
+				}
 				Object.DestroyImmediate(formerTile.gameObject);
 			}
+						
+			//Instantiate tile prefab
+			go = (GameObject) PrefabUtility.InstantiatePrefab(m_currentTile.gameObject);
+
 			
 			//store the script in the grid
 			Tile tileScript = go.GetComponent<Tile>();

@@ -31,6 +31,14 @@ public class Tile : MonoBehaviour {
 		this.transform.localScale = new Vector3 (newScaleX,newScaleY,1);
 	}
 
+	public bool Compare(Tile tile){
+		bool eq = true;
+		eq = eq && (tile.Type == this.m_type);
+		//eq = eq && (tile.Row == this.m_row) && (tile.Column == this.m_column);
+		eq = eq && (tile.GetComponent<SpriteRenderer> ().sprite.texture.name == gameObject.GetComponent<SpriteRenderer> ().sprite.texture.name);
+		return eq;
+	}
+
 	#region GETTERS-SETTERS
 
 	public int Row {
@@ -58,5 +66,11 @@ public class Tile : MonoBehaviour {
 		return  m_renderer.sprite.rect.width / m_renderer.sprite.bounds.size.x;
 	}
 
+
+	public int Type {
+		get {
+			return m_type;
+		}
+	}
 	#endregion
 }
