@@ -10,14 +10,13 @@ public class TileMap : MonoBehaviour {
 	[SerializeField] bool m_showGrid = true;
 	
 	[SerializeField] TileSet m_tileSet;
-
 	
 	bool m_lockEditing = false;
 
 	int m_gridWidth = 40;
 	int m_gridHeight = 20;
 	
-	[HideInInspector][SerializeField]
+	/*[HideInInspector]*/[SerializeField]
 	private List< RowWrapper > m_grid;
 	
 	private float m_xRange = 800.0f;
@@ -93,7 +92,7 @@ public class TileMap : MonoBehaviour {
 					InitGrid();
 				}
 				RowWrapper row = m_grid[(int)j];
-				row.Insert((int)i, tileScript);
+				row[(int)i] = tileScript;
 				//set variables
 				tileScript.Row = (int) j;
 				tileScript.Column =(int) i;

@@ -89,7 +89,7 @@ public class TileMapEditor : Editor {
 		                         );
 		Vector3 mousePos = ray.origin;
 
-		if (e.isMouse && (e.type == EventType.MouseDown) ) {
+		if (e.isMouse && (e.type == EventType.MouseDown || e.type == EventType.MouseDrag) ) {
 			GUIUtility.hotControl = controlID;
 			e.Use();
 
