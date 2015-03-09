@@ -98,6 +98,8 @@ public class TileMapEditor : Editor {
 		if (m_tileMap.TileSet != null) {
 			string[] names = new string[m_tileMap.TileSet.tilesPrefabs.Length];
 			for (int i=0; i < names.Length; i ++) {
+				if(m_tileMap.TileSet.tilesPrefabs[i] == null)
+					continue;
 				names [i] = m_tileMap.TileSet.tilesPrefabs [i].gameObject.name;
 				if( m_tileMap.GetCurrentTile().gameObject.name == names[i] )
 					m_selectedTileIndex = i;
