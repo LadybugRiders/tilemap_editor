@@ -12,7 +12,7 @@ public class TileMapEditor : Editor {
 		m_tileMap = (TileMap)target;
 	}
 
-	[MenuItem("Assets/Create/Tileset")]
+	[MenuItem("Assets/Create/TileMap/Tileset")]
 	static void CreateTileset(){
 		var asset = ScriptableObject.CreateInstance<TileSet>();
 		var path = AssetDatabase.GetAssetPath (Selection.activeObject);
@@ -32,7 +32,36 @@ public class TileMapEditor : Editor {
 		asset.hideFlags = HideFlags.DontSave;
 	}
 
+	[MenuItem("Assets/Create/TileMap/Tile")]
+	static void CreateTilePrefab(){
+		var path = AssetDatabase.GetAssetPath (Selection.activeObject);
+		if (string.IsNullOrEmpty (path)) {
+			path = "Assets";
+		} else if (Path.GetExtension (path) != "") {
+			path = path.Replace(Path.GetFileName(path),"");
+		} else {
+			path += "/";
+		}
+		
+		var assetPath = AssetDatabase.GenerateUniqueAssetPath (path + "Tile.prefab");
+		Object prefab = PrefabUtility.CreateEmptyPrefab (assetPath);
+		GameObject go = new GameObject ("Tile");
+		go.AddComponent<Tile> ();
+		go.AddComponent<SpriteRenderer> ();
+		PrefabUtility.ReplacePrefab (go, prefab);
+		Object.DestroyImmediate (go);
+		/*
+		AssetDatabase.CreateAsset (asset, assetPath);
+		AssetDatabase.SaveAssets ();
+		EditorUtility.FocusProjectWindow ();
+		Selection.activeObject = asset;
+		asset.hideFlags = HideFlags.DontSave; */
+	}
+
 	public override void OnInspectorGUI(){
+		
+		base.OnInspectorGUI ();
+
 		//Check cell size changes
 		EditorGUI.BeginChangeCheck ();
 		float newValueCellSize = m_tileMap.CellSize;
@@ -40,8 +69,6 @@ public class TileMapEditor : Editor {
 		if (EditorGUI.EndChangeCheck ()) {
 			m_tileMap.CellSize = newValueCellSize;
 		}
-
-		base.OnInspectorGUI ();
 
 		//Grid size manipulation
 		int newValueWidth = m_tileMap.GridWidth;
@@ -59,17 +86,28 @@ public class TileMapEditor : Editor {
 		if (EditorGUI.EndChangeCheck ()) {
 			m_tileMap.GridWidth = newValueWidth;
 		}
-
-		//Create arrays for selecting a tile prefab
-		string[] names = new string[m_tileMap.TileSet.tilesPrefabs.Length];
-		for (int i=0; i < names.Length; i ++) {
-			names[i] = m_tileMap.TileSet.tilesPrefabs[i].gameObject.name;
-		}
-		//check when the value of the dropdown is changed
+		
+		//TileSet Selection
+		TileSet ts = m_tileMap.TileSet;
 		EditorGUI.BeginChangeCheck ();
-		m_selectedTileIndex = EditorGUILayout.Popup(m_selectedTileIndex, names);
+		ts = (TileSet) EditorGUILayout.ObjectField (ts, typeof(TileSet), false);
 		if (EditorGUI.EndChangeCheck ()) {
-			m_tileMap.SetCurrentTileByName(names[m_selectedTileIndex]);
+			m_tileMap.TileSet = ts;
+		}
+		//Create arrays for selecting a tile prefab
+		if (m_tileMap.TileSet != null) {
+			string[] names = new string[m_tileMap.TileSet.tilesPrefabs.Length];
+			for (int i=0; i < names.Length; i ++) {
+				names [i] = m_tileMap.TileSet.tilesPrefabs [i].gameObject.name;
+				if( m_tileMap.GetCurrentTile().gameObject.name == names[i] )
+					m_selectedTileIndex = i;
+			}
+			//check when the value of the dropdown is changed
+			EditorGUI.BeginChangeCheck ();
+			m_selectedTileIndex = EditorGUILayout.Popup (m_selectedTileIndex, names);
+			if (EditorGUI.EndChangeCheck ()) {
+				m_tileMap.SetCurrentTileByName (names [m_selectedTileIndex]);
+			}
 		}
 
 		//Edition Lock
