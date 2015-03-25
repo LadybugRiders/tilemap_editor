@@ -30,6 +30,7 @@ public class RowWrapper  {
 				Debug.Log (list[i].gameObject.name + "at column " + i);
 			}catch(System.Exception e){
 				Debug.Log( "null at column " + i);
+				e.ToString(); //Avoid Warning in Console
 			}
 		}
 	}

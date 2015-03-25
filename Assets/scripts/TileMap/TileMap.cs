@@ -8,6 +8,7 @@ public class TileMap : MonoBehaviour {
 	
 	[HideInInspector] [SerializeField] private float m_cellSize = 32.0f;
 	[SerializeField] bool m_showGrid = true;
+	[SerializeField] Color m_gridColor = new Color(1.0f, 0.5f, 1.0f,0.5f);
 	
 	[HideInInspector][SerializeField] TileSet m_tileSet;
 	
@@ -44,8 +45,8 @@ public class TileMap : MonoBehaviour {
 	
 	void OnDrawGizmos(){
 		if (m_showGrid) {
-			Vector3 pos = Camera.current.transform.position;
-			Gizmos.color = new Color (1.0f, 0.5f, 1.0f,0.5f);
+			Vector3 pos = this.transform.position;
+			Gizmos.color = m_gridColor;
 			for (float y = pos.y -m_yRange *0.5f; y < pos.y + m_yRange * 0.5f; y+= this.m_cellSize / m_baseUnit) {
 				Gizmos.DrawLine (new Vector3 (-m_xRange*0.5f, y, 0),
 				                 new Vector3 (m_xRange*0.5f, y, 0));
@@ -58,7 +59,7 @@ public class TileMap : MonoBehaviour {
 	}
 	
 	public GameObject AddTile (float x, float y){
-		Debug.Log (m_currentTile);
+		//Debug.Log (m_currentTile);
 		GameObject go = null;
 		if( m_currentTile != null ){			
 			//Position in the grid
@@ -119,16 +120,16 @@ public class TileMap : MonoBehaviour {
 	void StoreTileObject(GameObject _tile, int _i, int _j){
 		GameObject rowObject = null;
 		for (int i=0; i < transform.childCount; i++) {
-			if( transform.GetChild(i).gameObject.name == "Row"+_j){
+			if( transform.GetChild(i).gameObject.name == "Row"+_j.ToString("000")){
 				rowObject = transform.GetChild(i).gameObject;
 				break;
 			}
 		}
 		if (rowObject == null) {
-			rowObject = new GameObject("Row"+_j);
+			rowObject = new GameObject("Row"+_j.ToString("000"));
 			rowObject.transform.parent = transform;
 		}
-		_tile.gameObject.name = "Tile" + _i + "_" + _j;
+		_tile.gameObject.name = "Tile_" + _i.ToString("000") + "_" + _j.ToString("000");
 		_tile.transform.parent = rowObject.transform;
 	}
 	
@@ -166,7 +167,7 @@ public class TileMap : MonoBehaviour {
 		try{
 			row = m_grid [j];
 		}catch(System.Exception e){
-			//Debug.LogError("No row "+j);
+			e.ToString(); //Avoid Warning in Console
 			return null;
 		}
 
@@ -175,6 +176,7 @@ public class TileMap : MonoBehaviour {
 			tileScript = row[i];
 		}catch(System.Exception e){
 			//Debug.LogError("No Column "+i);
+			e.ToString(); //Avoid Warning in Console
 			return null;
 		}
 
@@ -188,6 +190,7 @@ public class TileMap : MonoBehaviour {
 				try{
 					tile = m_grid [j][i];
 				}catch(System.Exception e){
+					e.ToString(); // Avoid Warning in Console
 					continue;
 				}
 				
@@ -206,7 +209,9 @@ public class TileMap : MonoBehaviour {
 	}
 
 	//compare Tiles with new tileset Tiles and remove the wrong ones
-	void CleanGrid(){
+	public void CleanGrid(){
+		//remove out of grid tiles
+		RemoveExtraTiles ();
 
 		Tile tile;
 		for (int j=0; j < m_gridHeight; j ++) {
@@ -214,6 +219,7 @@ public class TileMap : MonoBehaviour {
 				try{
 					tile = m_grid [j][i];
 				}catch(System.Exception e){
+					e.ToString(); // Avoid Warning in Console
 					continue;
 				}
 
@@ -222,6 +228,15 @@ public class TileMap : MonoBehaviour {
 					Object.DestroyImmediate(tile.gameObject);
 				}
 			}
+		}
+	}
+
+	//remove tiles that are not in the grid anymore
+	void RemoveExtraTiles(){
+		Debug.Log (m_grid.Count);
+		//Remove rows
+		for (int i=m_gridHeight; i < m_grid.Count; i++) {
+			Debug.Log(i);
 		}
 	}
 	
@@ -308,6 +323,7 @@ public class TileMap : MonoBehaviour {
 				try{
 					tile = m_grid [j][i];
 				}catch(System.Exception e){
+					e.ToString(); //Avoid Warning in Console
 					continue;
 				}
 
@@ -324,6 +340,15 @@ public class TileMap : MonoBehaviour {
 		}
 		set {
 			m_lockEditing = value;
+		}
+	}
+
+	public Color GridColor {
+		get {
+			return m_gridColor;
+		}
+		set {
+			m_gridColor = value;
 		}
 	}
 	#endregion
