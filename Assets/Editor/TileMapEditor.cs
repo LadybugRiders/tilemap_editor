@@ -8,8 +8,12 @@ public class TileMapEditor : Editor {
 	TileMap m_tileMap;
 	int m_selectedTileIndex = 0;
 
+	int m_newGridHeight, m_newGridWidth;
+
 	void OnEnable(){
 		m_tileMap = (TileMap)target;
+		m_newGridWidth = m_tileMap.GridWidth;
+		m_newGridHeight = m_tileMap.GridHeight;
 	}
 
 	[MenuItem("Assets/Create/TileMap/Tileset")]
@@ -70,22 +74,18 @@ public class TileMapEditor : Editor {
 			m_tileMap.CellSize = newValueCellSize;
 		}
 
-		//Grid size manipulation
-		int newValueWidth = m_tileMap.GridWidth;
-		int newValueHeight = m_tileMap.GridHeight;
-
-		//Check Height changes
-		EditorGUI.BeginChangeCheck ();
-		newValueHeight =  EditorGUILayout.IntField ("Grid height", newValueHeight);
-		if (EditorGUI.EndChangeCheck ()) {
-			m_tileMap.GridHeight = newValueHeight;
+		//==============GRID SIZE=====================
+		GUILayout.Box("", new GUILayoutOption[]{GUILayout.ExpandWidth(true), GUILayout.Height(1)});
+		EditorGUILayout.BeginHorizontal ();
+		m_newGridWidth =  EditorGUILayout.IntField ("Grid Size", m_newGridWidth);
+		m_newGridHeight =  EditorGUILayout.IntField (m_newGridHeight);
+		EditorGUILayout.EndHorizontal ();
+		if (GUILayout.Button ("Apply")) {
+			m_tileMap.SetGridSize(m_newGridWidth,m_newGridHeight);
+			m_newGridWidth = m_tileMap.GridWidth;
+			m_newGridHeight = m_tileMap.GridHeight;
 		}
-		//Check Width Changes
-		EditorGUI.BeginChangeCheck ();
-		newValueWidth =  EditorGUILayout.IntField ("Grid width", newValueWidth);
-		if (EditorGUI.EndChangeCheck ()) {
-			m_tileMap.GridWidth = newValueWidth;
-		}
+		//=======================================================
 
 		//Draw Bar
 		EditorGUILayout.Space ();
@@ -123,6 +123,7 @@ public class TileMapEditor : Editor {
 
 		EditorGUILayout.Space ();
 		GUILayout.Box("", new GUILayoutOption[]{GUILayout.ExpandWidth(true), GUILayout.Height(1)});
+		EditorGUILayout.Space ();
 
 		//Edition Lock
 		m_tileMap.isLocked = EditorGUILayout.Toggle ("Lock", m_tileMap.isLocked);

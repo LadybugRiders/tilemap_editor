@@ -39,6 +39,10 @@ public class Tile : MonoBehaviour {
 		return eq;
 	}
 
+	public void RefreshName(){
+		gameObject.name = "Tile_" + Column.ToString("000") + "_" + Row.ToString("000");
+	}
+
 	#region GETTERS-SETTERS
 
 	public int Row {

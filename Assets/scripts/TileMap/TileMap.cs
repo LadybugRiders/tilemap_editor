@@ -26,7 +26,7 @@ public class TileMap : MonoBehaviour {
 	private float m_baseUnit = 100.0f;
 	
 	Transform m_currentTile;
-	
+
 	// Use this for initialization
 	void Start () {
 		//compute range of the grid ( in world units )
@@ -65,11 +65,11 @@ public class TileMap : MonoBehaviour {
 			//Position in the grid
 			float i = Mathf.Floor(x * m_baseUnit / m_cellSize) + Mathf.Floor(m_gridWidth *0.5f);
 			float j = Mathf.Floor(y * m_baseUnit / m_cellSize) + Mathf.Floor(m_gridHeight *0.5f);
-			
+
 			//outside of grid bounds
 			if( i < 0 || j < 0 || i >= m_gridWidth || j >= m_gridHeight)
 				return null;
-			
+
 			Undo.IncrementCurrentGroup();
 
 			Tile formerTile = GetTile((int)i,(int)j);
@@ -100,7 +100,7 @@ public class TileMap : MonoBehaviour {
 				//Resize
 				tileScript.Resize(m_cellSize);
 
-				StoreTileObject(tileScript.gameObject, (int) i, (int) j);
+				StoreTileObject(tileScript.gameObject, (int) i, (int) j,row);
 			}
 
 			
@@ -117,7 +117,7 @@ public class TileMap : MonoBehaviour {
 		return go;
 	}
 	
-	void StoreTileObject(GameObject _tile, int _i, int _j){
+	void StoreTileObject(GameObject _tile, int _i, int _j,RowWrapper _rowWrapper){
 		GameObject rowObject = null;
 		for (int i=0; i < transform.childCount; i++) {
 			if( transform.GetChild(i).gameObject.name == "Row"+_j.ToString("000")){
@@ -128,6 +128,7 @@ public class TileMap : MonoBehaviour {
 		if (rowObject == null) {
 			rowObject = new GameObject("Row"+_j.ToString("000"));
 			rowObject.transform.parent = transform;
+			_rowWrapper.RowObject = rowObject;
 		}
 		_tile.gameObject.name = "Tile_" + _i.ToString("000") + "_" + _j.ToString("000");
 		_tile.transform.parent = rowObject.transform;
@@ -148,11 +149,12 @@ public class TileMap : MonoBehaviour {
 	void InitGrid(){
 		m_grid = new List<RowWrapper> ();
 		for (int j=0; j < m_gridHeight; j++) {
-			RowWrapper tmpList = new RowWrapper();
+			RowWrapper row = new RowWrapper();
+			row.Index = j;
 			for(int i=0; i < m_gridWidth; i ++){
-				tmpList.Add(null);
+				row.Add(null);
 			}
-			m_grid.Add( tmpList );
+			m_grid.Add( row );
 		}
 	}
 
@@ -239,11 +241,166 @@ public class TileMap : MonoBehaviour {
 			Debug.Log(i);
 		}
 	}
+
+	//called to resort the grid when its height has changed
+	void ResortGridHeight(int _formerHeight){
+		int diff = m_gridHeight - _formerHeight;
+		if (diff == 0)
+			return;
+		//keep rows in buffer
+		List<GameObject> tmpRows = new List<GameObject> (m_gridHeight);
+		for (int i=0; i < m_gridHeight; i++) {
+			//take in account the new grid height
+			int newIndex = i - diff /2 ;
+			//Debug.Log( i + " " + newIndex );
+			if( newIndex >= 0 && newIndex < m_grid.Count)
+				tmpRows.Add( m_grid[newIndex].RowObject );
+			else
+				tmpRows.Add(null);
+		}
+
+		//the grid is shrunk
+		if (diff < 0) {
+			diff = Mathf.Abs(diff) / 2;
+			//go through all rows and shift them
+			for(int i=0; i < m_grid.Count ; i++){
+				RowWrapper row = m_grid[i];
+				//whether the current row is still in the grid after the height change
+				bool inGrid = (row.Index >= diff && row.Index < _formerHeight-diff);
+				if( !inGrid ){
+					//check if a Row GameObject is instantiated in the scene
+					if( row.RowObject != null ){
+						Object.DestroyImmediate(row.RowObject);
+					}
+				}
+				//shift index
+				if( i < tmpRows.Count)
+					row.RowObject = tmpRows[i];
+				else
+					row.RowObject = null;
+				row.Index = i;
+			}
+		}
+		else {//the grid is expanded 
+			diff = diff / 2;
+			//Add new rows in grid if necessary
+			for(int i=m_grid.Count; i < m_gridHeight; i++){
+				RowWrapper row = new RowWrapper();
+				row.Index = i;
+				row.Add(m_gridWidth);
+				m_grid.Add( row );
+			}
+			//shift all rows
+			for(int i=0; i < m_grid.Count ; i++){
+				RowWrapper row = m_grid[i];
+				row.RowObject = tmpRows[row.Index];
+				row.Index = i;
+			}
+		}
+
+	}
+
+	//called to resort the grid when its height has changed
+	void ResortGridWidth(int _formerWidth){
+		int diff = m_gridWidth - _formerWidth;
+		if (diff == 0)
+			return;
+				
+		//the grid is shrunk
+		if (diff < 0) {
+			//go through all rows and shift them
+			for(int i=0; i < m_grid.Count ; i++){
+				RowWrapper row = m_grid[i];
+				//keep tiles in buffer
+				List<Tile> tmpTiles = new List<Tile> (m_gridWidth);
+				for (int j=0; j < m_gridWidth; j++) {
+					//take in account the new grid width
+					int newIndex = j - diff /2  ;
+					//Debug.Log( j + " " + newIndex );
+					if( newIndex >= 0 && newIndex < m_grid.Count)
+						tmpTiles.Add( row[newIndex] );
+					else
+						tmpTiles.Add(null);
+				}
+				// destroy
+				for(int j=0; j < row.Count; j++){
+					Tile t = row[j];
+					if( t != null ){
+						//whether the current row is still in the grid after the height change
+						bool inGrid = (t.Column >= Mathf.Abs(diff) / 2 && t.Column < _formerWidth-Mathf.Abs(diff) / 2);
+						if( !inGrid ){
+							//Debug.Log("Deleting "+ t.gameObject.name);
+							Object.DestroyImmediate(t.gameObject);
+						}
+					}
+				}
+				//shift all tiles
+				for(int j=0; j < row.Count; j++){
+					if( j < m_gridWidth){
+						m_grid[i][j] = tmpTiles[j];
+						if( row[j] != null){
+							row[j].Column = j;	row[j].Row = i;
+							row[j].RefreshName();
+						}
+					}
+				}
+			}
+		}
+		else {//the grid is expanded 
+			//Add tiles to rows and shift
+			for(int i=0; i < m_grid.Count; i++){
+				RowWrapper row = m_grid[i];
+				if( m_gridWidth > row.Count)
+					row.Add(m_gridWidth);
+				//keep tiles in buffer
+				List<Tile> tmpTiles = new List<Tile> (m_gridWidth);
+				for (int j=0; j < m_gridWidth; j++) {
+					//take in account the new grid width
+					int newIndex = j - diff /2  ;
+					if( newIndex >= 0 && newIndex < m_grid.Count)
+						tmpTiles.Add( row[newIndex] );
+					else
+						tmpTiles.Add(null);
+				}
+
+				//shift all tiles
+				for(int j=0; j < row.Count; j++){
+					if( j < m_gridWidth){
+						m_grid[i][j] = tmpTiles[j];
+						if( row[j] != null){
+							row[j].Column = j;	row[j].Row = i;
+							row[j].RefreshName();
+						}
+					}
+				}
+			}
+		}
+		
+	}
 	
 	#region GETTERS
-	/**
-	 * GETTERS
-	 * */
+
+	public void SetGridSize(int _width, int _height){
+		//control multiple of 2
+		if(_width % 2 != 0){
+			_width += 1;
+		}
+		if(_height % 2 != 0){
+			_height += 1;
+		}
+		int formerHeight = m_gridHeight;
+		int formerWidth = m_gridWidth;
+		//Affect values
+		m_gridWidth = _width;
+		m_gridHeight = _height;
+		//compute range of the grid ( in world units )
+		m_xRange = ( m_gridWidth * m_cellSize ) / m_baseUnit;
+		m_yRange = ( m_gridHeight * m_cellSize ) / m_baseUnit;
+
+		//Sort the grid and shift rows and columns
+		ResortGridHeight (formerHeight);
+		ResortGridWidth (formerWidth);
+	}
 	
 	public void SetCurrentTile(Transform _tile){
 		m_currentTile = _tile;
@@ -287,34 +444,6 @@ public class TileMap : MonoBehaviour {
 			CleanGrid();
 		}
 	}
-	
-	public int GridWidth {
-		get {
-			return m_gridWidth;
-		}
-		set {
-			if(value % 2 != 0){
-				value += 1;
-			}
-			m_gridWidth = value;
-			//compute range of the grid ( in world units )
-			m_xRange = ( m_gridWidth * m_cellSize ) / m_baseUnit;
-		}
-	}
-	
-	public int GridHeight {
-		get {
-			return m_gridHeight;
-		}
-		set {
-			if(value % 2 != 0){
-				value += 1;
-			}
-			m_gridHeight = value;
-			//compute range of the grid ( in world units )
-			m_yRange = ( m_gridHeight * m_cellSize ) / m_baseUnit;
-		}
-	}
 
 	public void PrintGrid(){
 		Tile tile;
@@ -349,6 +478,18 @@ public class TileMap : MonoBehaviour {
 		}
 		set {
 			m_gridColor = value;
+		}
+	}
+
+	public int GridWidth {
+		get {
+			return m_gridWidth;
+		}
+	}
+
+	public int GridHeight {
+		get {
+			return m_gridHeight;
 		}
 	}
 	#endregion
