@@ -212,8 +212,6 @@ public class TileMap : MonoBehaviour {
 
 	//compare Tiles with new tileset Tiles and remove the wrong ones
 	public void CleanGrid(){
-		//remove out of grid tiles
-		RemoveExtraTiles ();
 
 		Tile tile;
 		for (int j=0; j < m_gridHeight; j ++) {
@@ -230,15 +228,6 @@ public class TileMap : MonoBehaviour {
 					Object.DestroyImmediate(tile.gameObject);
 				}
 			}
-		}
-	}
-
-	//remove tiles that are not in the grid anymore
-	void RemoveExtraTiles(){
-		Debug.Log (m_grid.Count);
-		//Remove rows
-		for (int i=m_gridHeight; i < m_grid.Count; i++) {
-			Debug.Log(i);
 		}
 	}
 
